@@ -1,5 +1,7 @@
 from cmu_graphics import *
 import cv2
+import numpy as np
+from PIL import Image
 import requests
 from bs4 import BeautifulSoup
 
@@ -43,6 +45,67 @@ def getTemp(city):
     temp = soup.find('div', attrs={'class': 'BNeawe iBp4i AP7Wnd'}).text
     return temp
 
+def identifyButton(app, mousex,mousey):
+    for button in app.buttons:
+        if (mousex >= button.left) and (mousex <= button.left+button.width) and (mousey >= button.top) and (mousey <= button.top+button.height):
+            return button
+    return None
+
+#1.
+def create_shirt_mask(image_path):
+    image = cv2.imread(image_path)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
+    _, binary = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY_INV)
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    shirt_contour = contours[0] 
+    mask = np.zeros_like(gray)
+    cv2.drawContours(mask, [shirt_contour], -1, 255, thickness=cv2.FILLED)
+    mask = Image.fromarray(mask)
+    return mask
+
+#2.
+def pixelateShirt(imagePath):
+    combined = Image.open(imagePath)
+    pixelation_scale = 0.15
+    small_size = (int(combined.size[0] * pixelation_scale), int(combined.size[1] * pixelation_scale))
+    small_image = combined.resize(small_size, Image.NEAREST)
+    pixelated_image = small_image.resize(combined.size, Image.NEAREST)
+    return(pixelated_image)
+
+#3.
+def maskOverlay(image, mask):
+    new_image = np.array(image)
+    new_image = cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR)
+    mask_resized = mask.resize((new_image.shape[1], new_image.shape[0]))
+    mask_np = np.array(mask_resized)
+    mask_3ch = cv2.merge([mask_np, mask_np, mask_np])
+    neon_green = np.array([57, 255, 20], dtype=np.uint8)
+    result = np.where(mask_3ch == 255, new_image, neon_green)
+    result_image = Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+    return result_image
+
+#4.
+def overlayToTemplate(image, templatePath):
+    image=image.convert('RGBA')
+    template = Image.open(templatePath).convert("RGBA")
+    template = template.resize(image.size)
+    overlaidImg = Image.alpha_composite(image, template)
+    # overlaidImg = overlaidImg.convert('RGB')
+    # overlaidImg.save('overlaidimg.jpg')
+    return overlaidImg
+
+#5.
+def removeBackground(image, bgColor, threshold):
+    values = image.getdata()
+    newValues = []
+    for value in values:
+        if all(abs(value[i] - bgColor[i]) < threshold for i in range(3)):
+            newValues.append((255,255,255,0))
+        else:
+            newValues.append(value)
+    image.putdata(newValues)
+    image.save(f'result_{Shirt.id}.png')
 
 #--------------- CLASSES --------------------
 
@@ -55,39 +118,66 @@ class Button:
         self.height = height
         self.color = color
     
-    def __repr(self):
-        return f'{self.name}: left={self.left}, top={self.top}, right={self.right}, bottom={self.bottom}'
-    
+    def __repr__(self):
+        return f'{self.name}: left={self.left}, top={self.top}, width={self.width}, height={self.height}, color={self.color}'
+
+
 class Shirt:
+    id = 0
+    clean = []
+    worn = []
+    
     def __init__(self, color, type):
+        Shirt.id += 1
         self.color = color
         self.sleeve = type
+        Shirt.clean.append(self)
+    
+    def __repr__(self):
+        return f'color: {self.color}, type: {self.sleeve}, id: {self.id}'
+    
+    def wearShirt(self):
+        Shirt.clean.remove(self)
+        Shirt.worn.append(self)
+
 
 #--------------- MODEL FUNCTIONS --------------------
 
 def createButtons(app):
-    button1 = Button('take-picture', app.height/2, app.width/2, 50, 50, 'black')
+    buttons = [
+        ('take-picture', 200, 300, 50, 50, 'black'),
+        ('set-outfit', 330, 100, 50, 50, 'green')
+    ]
 
-    app.buttons.append(button1)
+    app.buttons = [Button(*params) for params in buttons]
+
+def setDefaultLook(app):
+    defaultTop = Shirt('black-default', 's-sleeve')
+    app.avatarOutfit['shirt'] = defaultTop
 
 #--------------- CONTROLLER FUNCTIONS --------------------
 
 def onMousePress(app, mousex, mousey):
     idButton = identifyButton(app, mousex,mousey)
-    if idButton != None: 
+    if idButton == None:
+        pass
+
+    elif idButton.name == 'take-picture':
         idButton.color = 'blue'
-    
-    if idButton.name == 'take-picture':
         takePicture(app)
-
-
-def identifyButton(app, mousex,mousey):
-    for button in app.buttons:
-        if (mousex >= button.left) and (mousex <= button.left+button.width) and (mousey >= button.top) and (mousey <= button.top+button.height):
-            return button
-    return None
+        mask = create_shirt_mask("assets/template.jpg")
+        pixelatedImage = pixelateShirt('captured_image.jpg')
+        cropped_image = maskOverlay(pixelatedImage, mask)
+        overlaid_image = overlayToTemplate(cropped_image, 'assets/transparent_template.png')
+        removeBackground(overlaid_image, (57,225,20), 70)
+        Shirt('purple', 's-sleeve')
     
-
+    elif idButton.name == 'set-outfit':
+        idButton.color = 'orange'
+        pass #WRITE THIS CODE 
+    
+def takeStep(app):
+    pass
 
 #--------------- VIEW FUNCTIONS -----------------
 
@@ -103,6 +193,8 @@ def drawScreen(app):
     temp = getTemp('Pittsburgh')
     drawLabel(temp, 100, 200)
 
+    drawLabel(str(app.avatarOutfit), 200, 400)
+
 
 
 #--------------- CMU GRAPHICS FUNCTIONS ---------------------
@@ -115,12 +207,22 @@ def onAppStart(app):
                   'yellow': rgb(248,240,204), 
                   'strawberry': rgb(214,122,145)}
     app.background = app.colors['dark_coral']
+    app.animateMode = True
+    app.counter = 0
+    app.cloudIndex = 1
 
     app.buttons = []
     createButtons(app)
 
     app.capturedImage = None
 
+    app.avatarOutfit = {'shirt': None, 'pants': None}
+    setDefaultLook(app)
+
+def onStep(app):
+    if app.animateMode:
+        app.counter += 1
+        takeStep(app)
 
 def redrawAll(app):
     drawScreen(app)
