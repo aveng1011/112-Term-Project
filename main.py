@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 #--------------- WORKING FUNCTIONS ---------------------
 def takePicture(app):
@@ -46,10 +47,28 @@ def getTemp(city):
     return temp
 
 def identifyButton(app, mousex,mousey):
-    for button in app.buttons:
+    if app.confirmationScreen:
+        buttonList = app.confButtons
+    else: buttonList = app.mainButtons
+
+    for button in buttonList:
         if (mousex >= button.left) and (mousex <= button.left+button.width) and (mousey >= button.top) and (mousey <= button.top+button.height):
             return button
     return None
+
+def recommendOutfit(app, shirt = None, pants = None):
+    #!!! actually write this function
+    if shirt != None:
+        return Shirt.clean[0]
+    if pants != None:
+        return Pant.clean[0]
+
+def addToLog(shirt, pant):
+    date = datetime.today().date()
+    print(date)
+
+    with open('week_log.txt', 'a') as file:
+        file.write(f'{date}, {shirt.id}, {pant}\n') #!!! write the shirt and pant ids to the log
 
 #1.
 def create_shirt_mask(image_path):
@@ -106,6 +125,9 @@ def removeBackground(image, bgColor, threshold):
             newValues.append(value)
     image.putdata(newValues)
     image.save(f'result_{Shirt.id}.png')
+    path = f'result_{Shirt.id}.png'
+    return path
+    
 
 #--------------- CLASSES --------------------
 
@@ -128,32 +150,49 @@ class Shirt:
     worn = []
     
     def __init__(self, color, type):
-        Shirt.id += 1
         self.color = color
         self.sleeve = type
+        self.id = id
         Shirt.clean.append(self)
+        Shirt.id += 1
     
     def __repr__(self):
-        return f'color: {self.color}, type: {self.sleeve}, id: {self.id}'
-    
-    def wearShirt(self):
-        Shirt.clean.remove(self)
-        Shirt.worn.append(self)
+        return f'color: {self.color}, type: {self.sleeve}'
 
+class Pant:
+    clean = []
+    worn = []
+    
+    def __init__(self, color, material):
+        self.color = color
+        self.material = material
+        Pant.clean.append(self)
+    
+    def __repr__(self):
+        return f'color: {self.color}, material: {self.material}'
 
 #--------------- MODEL FUNCTIONS --------------------
 
 def createButtons(app):
     buttons = [
         ('take-picture', 200, 300, 50, 50, 'black'),
-        ('set-outfit', 330, 100, 50, 50, 'green')
+        ('set-outfit', 330, 100, 50, 50, 'green'),
+        ('change-outfit', 400, 400, 50, 50, 'brown')
     ]
+    app.mainButtons = [Button(*params) for params in buttons]
 
-    app.buttons = [Button(*params) for params in buttons]
+    confButtons = [
+        ('confirm', 200, 300, 50, 50, 'black')
+    ]
+    app.confButtons = [Button(*params) for params in confButtons]
+
 
 def setDefaultLook(app):
     defaultTop = Shirt('black-default', 's-sleeve')
+    defaultBottom = Pant('black-default', 'cotton')
     app.avatarOutfit['shirt'] = defaultTop
+    app.avatarOutfit['pant'] = defaultBottom
+
 
 #--------------- CONTROLLER FUNCTIONS --------------------
 
@@ -165,37 +204,60 @@ def onMousePress(app, mousex, mousey):
     elif idButton.name == 'take-picture':
         idButton.color = 'blue'
         takePicture(app)
-        mask = create_shirt_mask("assets/template.jpg")
-        pixelatedImage = pixelateShirt('captured_image.jpg')
-        cropped_image = maskOverlay(pixelatedImage, mask)
-        overlaid_image = overlayToTemplate(cropped_image, 'assets/transparent_template.png')
-        removeBackground(overlaid_image, (57,225,20), 70)
-        Shirt('purple', 's-sleeve')
+        if app.capturedImage != None:
+            mask = create_shirt_mask("assets/template.jpg")
+            pixelatedImage = pixelateShirt('captured_image.jpg')
+            cropped_image = maskOverlay(pixelatedImage, mask)
+            overlaid_image = overlayToTemplate(cropped_image, 'assets/transparent_template.png')
+            path = removeBackground(overlaid_image, (57,225,20), 70)
+            
+            app.confirmationScreen = True
     
     elif idButton.name == 'set-outfit':
         idButton.color = 'orange'
-        pass #WRITE THIS CODE 
+        shirt = app.avatarOutfit['shirt']
+        pant = app.avatarOutfit['pant']
+        addToLog(shirt, pant)
+        #!!! remove change clothes buttons
+
+    elif idButton.name == 'change-outfit' and app.satisfiesEntries:
+        idButton.color = 'white'
+        app.avatarOutfit['shirt'] = recommendOutfit(app, 'shirt')
     
+
+    elif idButton.name == 'confirm':
+        with open('s_inventory.txt','a') as file:
+            file.write('creatingnewshirt') #!!! how do i access shirt variables
+
 def takeStep(app):
     pass
 
 #--------------- VIEW FUNCTIONS -----------------
 
 def drawScreen(app):
-    # drawRect(0, 0, app.width, app.height, fill=app.colors['dark_coral'], border=app.colors['strawberry'], borderWidth=5)
-    # drawRect(app.width/2, app.height/2, 500, 600, align='center', fill=app.colors['coral'])
-    # drawLabel('Current Weather:', 80, 50)
-    # drawLabel("Today's Outfit", app.width/2, 150)
-
-    for button in app.buttons:
+    for button in app.mainButtons:
         drawRect(button.left, button.top, button.height, button.width, fill=button.color)
-
-    temp = getTemp('Pittsburgh')
-    drawLabel(temp, 100, 200)
+    #temp = getTemp('Pittsburgh')
+    #drawLabel(temp, 100, 200)
 
     drawLabel(str(app.avatarOutfit), 200, 400)
 
+def drawConfirmationScreen(app):
+    drawRect(100, 100, 400, 400, fill='white')
+    drawLabel('Confirm details', 200, 200)
+    color, sleeve = getLastLine()
+    drawLabel(f'shirt color:{color}', 220, 250)
+    drawLabel(f'type:{sleeve}', 220, 270)
 
+    for button in app.confButtons:
+        drawRect(button.left, button.top, button.height, button.width, fill=button.color)
+
+def getLastLine():
+    with open('s_inventory.txt','r') as file:
+        lLine = file.readlines() [-1]    
+    features = lLine.split(',')
+    return features[1], features[2]
+    
 
 #--------------- CMU GRAPHICS FUNCTIONS ---------------------
 def onAppStart(app):
@@ -208,15 +270,18 @@ def onAppStart(app):
                   'strawberry': rgb(214,122,145)}
     app.background = app.colors['dark_coral']
     app.animateMode = True
+    app.confirmationScreen = False
     app.counter = 0
     app.cloudIndex = 1
 
-    app.buttons = []
+    app.mainButtons = []
+    app.confButtons = []
     createButtons(app)
 
     app.capturedImage = None
 
-    app.avatarOutfit = {'shirt': None, 'pants': None}
+    app.avatarOutfit = {'shirt': None, 'pant': None}
+    app.satisfiesEntries = False
     setDefaultLook(app)
 
 def onStep(app):
@@ -226,13 +291,11 @@ def onStep(app):
 
 def redrawAll(app):
     drawScreen(app)
+    if app.confirmationScreen:
+        drawConfirmationScreen(app)
+
 
 def main():
     runApp()
 
 main()
-
-
-
-
-

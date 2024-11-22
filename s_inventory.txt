@@ -1,0 +1,2 @@
+id, color, sleeve
+0, 'black', 's-sleeve'creatingnewshirtcreatingnewshirt

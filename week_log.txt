@@ -1,0 +1,4 @@
+2024-11-22, color: black-default, type: s-sleeve, color: black-default, material: cotton
+2024-11-22, color: black-default, type: s-sleeve, color: black-default, material: cotton
+2024-11-22, color: black-default, type: s-sleeve, color: black-default, material: cotton
+2024-11-22, <built-in function id>, color: black-default, material: cotton
