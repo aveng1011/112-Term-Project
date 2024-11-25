@@ -46,7 +46,12 @@ def getTemp(city):
     temp = soup.find('div', attrs={'class': 'BNeawe iBp4i AP7Wnd'}).text
     return temp
 
-def identifyButton(app, mousex,mousey):
+def identifyButton(app, mousex,mousey, mode=None):
+    if (mousex >= app.scrollLeft) and (mousex <= app.scrollLeft+app.scrollWidth) and (mousey >= app.scrollTop) and (mousey <= app.scrollTop+app.scrollHeight):
+        app.trackingScroll = True
+        app.initialY = mousey
+        return
+    
     if app.confirmationScreen:
         buttonList = app.confButtons
     else: buttonList = app.mainButtons
@@ -63,12 +68,28 @@ def recommendOutfit(app, shirt = None, pants = None):
     if pants != None:
         return Pant.clean[0]
 
+def getDate():
+    numtoMonths = {1: 'January', 2: 'Feburary', 3: 'March', 4: 'April', 5: 'May', 6: 'June', 7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'}
+
+    date = str(datetime.today().date())
+    monthI = date[5:].find('-') + 5
+    monthNum = int(date[5:monthI])
+    month = numtoMonths[monthNum]
+    day = date[monthI+1:]
+    formattedDate = f'{month} {day}, {date[:4]}'
+    return date, formattedDate
+
 def addToLog(shirt, pant):
-    date = datetime.today().date()
-    print(date)
+    date, formattedDate = getDate()
 
     with open('week_log.txt', 'a') as file:
         file.write(f'{date}, {shirt.id}, {pant}\n') #!!! write the shirt and pant ids to the log
+
+def getLastLine():
+    with open('s_inventory.txt','r') as file:
+        lLine = file.readlines() [-1]    
+    features = lLine.split(',')
+    return features[1], features[2]
 
 #1.
 def create_shirt_mask(image_path):
@@ -159,6 +180,9 @@ class Shirt:
     def __repr__(self):
         return f'color: {self.color}, type: {self.sleeve}'
 
+    def changeColor(self, color):
+        self.color = color
+
 class Pant:
     clean = []
     worn = []
@@ -177,12 +201,16 @@ def createButtons(app):
     buttons = [
         ('take-picture', 200, 300, 50, 50, 'black'),
         ('set-outfit', 330, 100, 50, 50, 'green'),
-        ('change-outfit', 400, 400, 50, 50, 'brown')
+        ('change-outfit', 400, 400, 50, 50, 'brown'),
+        ('scroll-up', app.width-42-20, 150, 20, 20, COLORS['coral']),
+        ('scroll-down', app.width-42-20, app.height-150, 20, 20, COLORS['coral'])
     ]
     app.mainButtons = [Button(*params) for params in buttons]
 
     confButtons = [
-        ('confirm', 200, 300, 50, 50, 'black')
+        ('confirm', 200, 300, 50, 50, 'black'),
+        ('cancel', 300, 300, 50, 50, 'white'),
+        ('change-shirt-color', 300, 250, 50, 50, 'orange')
     ]
     app.confButtons = [Button(*params) for params in confButtons]
 
@@ -201,6 +229,11 @@ def onMousePress(app, mousex, mousey):
     if idButton == None:
         pass
 
+    elif idButton.name == 'scroll-down':
+        adjustScrollbar(app, buttonPress='down')
+    elif idButton.name == 'scroll-up':
+        adjustScrollbar(app, buttonPress='up')
+
     elif idButton.name == 'take-picture':
         idButton.color = 'blue'
         takePicture(app)
@@ -211,6 +244,11 @@ def onMousePress(app, mousex, mousey):
             overlaid_image = overlayToTemplate(cropped_image, 'assets/transparent_template.png')
             path = removeBackground(overlaid_image, (57,225,20), 70)
             
+            #color = getShirtColor(___)
+            #sleeve = getSleeve(____)
+
+            #app.currShirt = Shirt(color, sleeve) #!!! This won't work
+
             app.confirmationScreen = True
     
     elif idButton.name == 'set-outfit':
@@ -223,24 +261,92 @@ def onMousePress(app, mousex, mousey):
     elif idButton.name == 'change-outfit' and app.satisfiesEntries:
         idButton.color = 'white'
         app.avatarOutfit['shirt'] = recommendOutfit(app, 'shirt')
+        app.animateMode = True
     
 
     elif idButton.name == 'confirm':
         with open('s_inventory.txt','a') as file:
             file.write('creatingnewshirt') #!!! how do i access shirt variables
+        app.confirmationScreen  = False
+    elif idButton.name == 'cancel':
+        app.confirmationScreen = False
+    elif idButton.name == 'change-shirt-color':
+        idButton.color = 'yellow'
+        newColor = 'blue' # detectSelection() !!! write this function
+        app.currShirt.changeColor(newColor)
+
+def onMouseDrag(app, mousex, mousey):
+    if app.trackingScroll:
+        adjustScrollbar(app, mousey=mousey)
+
+def onMouseRelease(app, mousex, mousey):
+    if app.trackingScroll:
+        app.trackingScroll = False
+        adjustScrollbar(app, mousey=mousey) 
+
+def adjustScrollbar(app, mousey=None, buttonPress=None):
+    if buttonPress == 'up':
+        currTop = app.scrollTop - 10
+        app.itemTop -= 10
+    elif buttonPress == 'down':
+        currTop = app.scrollTop + 10
+        app.itemTop += 10
+    else:
+        dy = mousey - app.initialY
+        app.initialY = mousey
+        currTop = app.scrollTop + dy
+        app.itemTop -= dy
+    
+    currBottom = currTop + app.scrollHeight
+    minTop = 145
+    maxBottom = 145+156+145
+
+    if currTop < minTop:
+        app.scrollTop = minTop
+        app.itemTop = 157 - (8+84)
+    elif currBottom > maxBottom:
+        app.scrollTop = maxBottom-app.scrollHeight
+        app.itemTop = 157 - (8+84) - app.closetHeight
+    else:
+        app.scrollTop = currTop
 
 def takeStep(app):
-    pass
+    if app.imageI > 1:
+        app.imageI -= 1
+    else:
+        app.animateMode = False
+        app.imageI = 18
 
 #--------------- VIEW FUNCTIONS -----------------
 
 def drawScreen(app):
+    #screen
+    drawRect(10, 65, app.width-20, app.height-75, fill=COLORS['dark_coral'])
+    drawRect(45, 13, 907, 41, fill=COLORS['coral'])
+    drawLabel(f"Maggie's Closet - {app.formattedDate}", 58, 19, align='left-top', fill=COLORS['shadow'], size=25)
+    drawRect(app.width-84, 13, 44, 44, fill=COLORS['coral'])
+    drawLabel('X', app.width-84, 18, size=30, align='left-top')
+
+    drawRect(45, 637, app.width-90, 108, fill=COLORS['pink'])
+
+    #closet
+    drawRect(792, 147, 216, 479, fill=COLORS['pink'])
+    drawCloset(app, 14) #!!! only drawing closet with 8 things
+
+    #scroll bar
+    drawRect(989, 145, app.width-45-989, 145+156, fill=COLORS['coral'])
+    drawRect(app.scrollLeft, app.scrollTop, app.scrollWidth, app.scrollHeight, fill=COLORS['white-pink'])
+
+    #buttons
     for button in app.mainButtons:
         drawRect(button.left, button.top, button.height, button.width, fill=button.color)
     #temp = getTemp('Pittsburgh')
     #drawLabel(temp, 100, 200)
 
     drawLabel(str(app.avatarOutfit), 200, 400)
+
+    if app.animateMode == True:
+        drawImage(f'cloud-gif/{app.imageI}.jpg', 300, 400)
 
 def drawConfirmationScreen(app):
     drawRect(100, 100, 400, 400, fill='white')
@@ -252,27 +358,51 @@ def drawConfirmationScreen(app):
     for button in app.confButtons:
         drawRect(button.left, button.top, button.height, button.width, fill=button.color)
 
-def getLastLine():
-    with open('s_inventory.txt','r') as file:
-        lLine = file.readlines() [-1]    
-    features = lLine.split(',')
-    return features[1], features[2]
+def drawCloset(app, itemNum):
+    column = 0
+    itemLeft = 792
+    itemTop = app.itemTop
+    for i in range(itemNum):
+        if column == 1:
+            drawRect(itemLeft+8+84, itemTop, 84, 84, fill=COLORS['coral'])
+            column = 0
+        else:
+            itemTop += (8+84)
+            drawRect(itemLeft, itemTop, 84, 84, fill=COLORS['coral'])
+            column += 1
+
     
 
 #--------------- CMU GRAPHICS FUNCTIONS ---------------------
-def onAppStart(app):
-    app.width, app.height = 1000, 700
+COLORS = {
+    'coral': rgb(255,200,201),
+    'dark_coral': rgb(255,141,157), 
+    'pink': rgb(255,235,237), 
+    'yellow': rgb(248,240,204), 
+    'strawberry': rgb(214,122,145),
+    'shadow': rgb(162,93,110),
+    'white-pink': rgb(255, 238, 240)
+    }
 
-    app.colors = {'coral': rgb(255,200,201), 
-                  'dark_coral': rgb(255,141,157), 
-                  'pink': rgb(255,235,237), 
-                  'yellow': rgb(248,240,204), 
-                  'strawberry': rgb(214,122,145)}
-    app.background = app.colors['dark_coral']
-    app.animateMode = True
+def onAppStart(app):
+    app.width, app.height = 1049, 776
+    app.background = COLORS['strawberry']
+    date, formattedDate = getDate()
+    app.formattedDate = formattedDate
+
+    app.animateMode = False
     app.confirmationScreen = False
     app.counter = 0
-    app.cloudIndex = 1
+
+    app.imageI = 18
+    app.stepsPerSecond = 15
+
+    app.scrollLeft = 991
+    app.scrollTop = 171
+    app.scrollWidth = 16
+    app.scrollHeight = 100
+    app.trackingScroll = False
+    app.initialY = None
 
     app.mainButtons = []
     app.confButtons = []
@@ -280,8 +410,14 @@ def onAppStart(app):
 
     app.capturedImage = None
 
+    app.shirtNum = 14
+    app.itemTop = 157 - (8+84) #for closet item starting position
+    app.closetHeight = (app.shirtNum // 2) * 84+8 - 147
+    
+   
     app.avatarOutfit = {'shirt': None, 'pant': None}
-    app.satisfiesEntries = False
+    
+    app.satisfiesEntries = True #!!! write this code
     setDefaultLook(app)
 
 def onStep(app):
