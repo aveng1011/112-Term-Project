@@ -59,9 +59,9 @@ def removeBackground(image, bgColor, threshold):
     image.save('result.png')
 
 
-mask = create_shirt_mask("assets/template.jpg")
+mask = create_shirt_mask("assets/pants.png")
 pixelatedImage = pixelateShirt('testShirt.jpg')
 cropped_image = maskOverlay(pixelatedImage, mask)
-overlaid_image = overlayToTemplate(cropped_image, 'assets/transparent_template.png')
+overlaid_image = overlayToTemplate(cropped_image, 'avatarOutline.png')
 removeBackground(overlaid_image, (57,225,20), 70)
 

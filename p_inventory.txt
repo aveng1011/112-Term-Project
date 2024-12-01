@@ -1,0 +1,4 @@
+id,color,material
+0,'black',jeans
+1,'grey',cotton
+2,'blue',cotton
