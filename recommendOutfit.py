@@ -22,7 +22,6 @@ def crop(maskPath, referencePath):
     print('captured image', inputW, inputH)
     maskResult.save(maskPath)
 
-#crop('shirt_mask.png', 'captured_image.jpg')
 
 def create_mask(image_path):
     image = cv2.imread(image_path)
@@ -39,7 +38,6 @@ def create_mask(image_path):
 
 #create_mask('assets/templates/skin.png')
 
-
 def changeSkinTone(image_path, currSkinTone, newColor):
     image = Image.open(image_path)
     imagePixels = image.load()
@@ -48,14 +46,12 @@ def changeSkinTone(image_path, currSkinTone, newColor):
 
     for y in range(h):
         for x in range(w):
-            if (imagePixels[x,y] != (255, 255, 255, 255)) and (imagePixels[x,y] != (0, 0, 0, 255)):
+            if imagePixels[x,y] == currSkinTone:
                 imagePixels[x,y] = newColor
-            # if imagePixels[x,y] == currSkinTone:
-            #     imagePixels[x,y] == newColor
-    image.show()
-    image.save(image_path)
+    #image.show()
+    image.save("assets/pants/2.png")
 
-changeSkinTone('assets/templates/skin_color.png', (246, 196,169, 255), (154, 85, 67, 255))
+changeSkinTone('assets/templates/pants_color.png', (192,136,230, 255), (255, 0, 255, 255))
 
 def overlayImage(maskPath, imagePath, outputPath):
     mask = Image.open(maskPath)
@@ -71,11 +67,11 @@ def overlayImage(maskPath, imagePath, outputPath):
     for y in range(maskH):
         for x in range(maskW):
             if mask_pixels[x,y] == 0:
-                image_pixels[x,y] = (255, 255, 255, 0)
+                image_pixels[x,y] = (0, 0, 0, 0)
     image.save(outputPath)
+    return outputPath
 
-
-#overlayImage('pant_mask.png', 'captured_image.jpg', 'result2.png')
+overlayImage('assets/templates/shirt_mask.png', 'captured_image.jpg', 'result2.png')
 
 def pixelateShirt(imagePath):
     combined = Image.open(imagePath)
@@ -99,9 +95,9 @@ def onAppStart(app):
 
 
 def redrawAll(app):
-    image = Image.open('result.png')
+    #image = Image.open('result.png')
     #drawImage(image, app.width/2, app.height/2, width=app.widthI/2, height=app.heightI/2, align='center')
-    #drawImage('/Users/maggiechen/Documents/15-112 Term Project/result2.png', app.width/2, app.height/2-300, width=app.widthI/2, height=app.heightI/2, align='center')
+    drawImage('/Users/maggiechen/Documents/15-112 Term Project/result2.png', app.width/2, app.height/2-300, width=app.widthI/2, height=app.heightI/2, align='center')
     
 
 

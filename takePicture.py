@@ -69,7 +69,7 @@ def onKeyPress(app, key):
         takePicture(app)
 
 def redrawAll(app):
-    drawLabel('press t to open camera and press space to take picture', app.width/2, 20)
+    drawLabel('press t to open camera and press space to take picture', app.width/2, 20, font='Pixelify Sans')
     drawLabel('press q to close camera', app.width/2, 40)
     
     if app.capturedImage != None:
