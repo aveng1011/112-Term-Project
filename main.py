@@ -140,7 +140,6 @@ def kmeans(image_path, centroids=None, prevCentroids=None):
             
 def getShirtColor(image_path):
     color = kmeans(image_path)
-    print(color)
     
 
     rgbNames = {'brown':(135,67,45, 255), 'black': (0,0,0,255), 'blue': (0, 0, 255, 255), 'red': (255, 0, 0, 255), 'gray': (80, 80, 80, 255), 'white': (255, 255, 255, 255), 'orange': (255, 165, 0, 255), 'yellow': (255, 255, 0, 255), 'green': (0, 255, 0, 255), 'blue': (0, 0, 255, 255), 'purple': (238, 130, 238, 255), 'beige': (232, 220, 202, 255), 'dark-beige':(215,194,168,255)}
@@ -153,12 +152,16 @@ def getShirtColor(image_path):
             smallestDistance = distance(color,rgbNames[rgbColor])
     
     return currColor
-def getTemp(city):
-    url = "https://www.google.com/search?q="+"weather"+city
-    html = requests.get(url).content
-    soup = BeautifulSoup(html, 'html.parser')
-    temp = soup.find('div', attrs={'class': 'BNeawe iBp4i AP7Wnd'}).text
-    return temp
+def getWeather(city):
+    file = requests.get(f'https://www.google.com/search?q=weather+{city}', headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15' })
+
+    soup = BeautifulSoup(file.text, 'html.parser')
+
+    temp = soup.find('span', id='wob_tm').text
+    rain = soup.find('span', id='wob_pp').text
+    wind = soup.find('span', id='wob_ws').text
+
+    return temp, rain, wind
 
 def identifyButton(app, mousex,mousey, mode=None):
     if (mousex >= app.scrollLeft) and (mousex <= app.scrollLeft+app.scrollWidth) and (mousey >= app.scrollTop) and (mousey <= app.scrollTop+app.scrollHeight):
@@ -170,7 +173,11 @@ def identifyButton(app, mousex,mousey, mode=None):
         buttonList = app.introButtons
     elif app.confirmationScreen:
         buttonList = app.confButtons
-    else: buttonList = app.mainButtons
+    else: 
+        if app.closetDisplay == 'shirts':
+            buttonList = app.mainButtons + app.shirtButtons
+        else: 
+            buttonList = app.mainButtons + app.pantButtons
 
     for button in buttonList:
         if (mousex >= button.left) and (mousex <= button.left+button.width) and (mousey >= button.top) and (mousey <= button.top+button.height):
@@ -349,9 +356,13 @@ class Shirt:
     
     def __repr__(self):
         return f'color: {self.color}, type: {self.sleeve}'
+
     
-    def changeColor(self, color):
-        self.color = color
+    def getById(id):
+        for shirt in Shirt.all:
+            if shirt.id == f'{id}.png':
+                return shirt
+
     
     def removeShirtByColor(color):
         for shirt in Shirt.all:
@@ -385,6 +396,13 @@ class Pant:
             if pant.color == color:
                 Pant.all.remove(pant)
                 Pant.clean.remove(pant)
+    
+    def getById(id):
+        for pant in Pant.all:
+            if pant.id == id:
+                if pant.id == f'{id}.png':
+                    return pant
+
 
 #--------------- MODEL FUNCTIONS --------------------
 
@@ -396,7 +414,8 @@ def createButtons(app):
 
     buttons = [
         ('ready', 463, 541,(120-2) , (36-2), COLORS['coral']),
-        ('take-picture', 815, 560, 50, 50, COLORS['dark_coral']),
+        ('take-picture-s', 815, 560, 50, 50, COLORS['dark_coral']),
+        ('take-picture-p', 815+100, 560, 50, 50, COLORS['dark_coral']),
         ('scroll-up', app.width-42-20, 150, 20, 20, COLORS['pink']),
         ('scroll-down', app.width-42-20, app.height-150-20, 20, 20, COLORS['pink']),
         ('closet-shirt', 792, 95, 70, 52, COLORS['pink']),
@@ -406,19 +425,34 @@ def createButtons(app):
 
     app.mainButtons = [Button(*params) for params in buttons]
     
-    # closetButtons = []
-    #closet
-    # for item in ['shirt', 'pant']:
-    #     for i in range(num):
-    #         if column == 1:
-    #             buttons.append((f'{item}{i}_btn', itemLeft+8+84+3, itemTop+3, 84-6, 84-6, COLORS['coral']))
-    #             column = 0
-    #         else:
-    #             itemTop += (8+84)
-    #             closetButtons.append((f'{item}{i}_btn', itemLeft+3, itemTop+3, 84-6, 84-6, COLORS['coral']))
-    #             column += 1
+    shirtButtons = []
+    item = 'shirt'
+    num = app.shirtNum
+    for i in range(num):
+        if column == 1:
+            shirtButtons.append((f'{item}{i}_btn', itemLeft+8+84+3, itemTop+3, 84-6, 84-6, COLORS['coral']))
+            column = 0
+        else:
+            itemTop += (8+84)
+            shirtButtons.append((f'{item}{i}_btn', itemLeft+3, itemTop+3, 84-6, 84-6, COLORS['coral']))
+            column += 1
 
-    # app.closetButtons = [Button(*params) for params in closetButtons]
+    app.shirtButtons = [Button(*params) for params in shirtButtons]
+
+    pantButtons = []
+    item = 'pant'
+    itemTop = app.itemTop
+    num = app.pantNum
+    for i in range(num):
+        if column == 1:
+            pantButtons.append((f'{item}{i}_btn', itemLeft+8+84+3, itemTop+3, 84-6, 84-6, COLORS['coral']))
+            column = 0
+        else:
+            itemTop += (8+84)
+            pantButtons.append((f'{item}{i}_btn', itemLeft+3, itemTop+3, 84-6, 84-6, COLORS['coral']))
+            column += 1
+
+    app.pantButtons = [Button(*params) for params in pantButtons]
 
     confButtons = [
         ('confirm', app.width/2+40, 500, 105, 45, COLORS['dark_coral']),
@@ -433,10 +467,17 @@ def createButtons(app):
     ]
     app.introButtons = [Button(*params) for params in introButtons]
 
-# def updateClosetButtons(app):
-#     column = 0
-#     itemLeft = 801
-#     itemTop = app.itemTop
+def updateClosetButtons(app, section):
+    itemTop = app.itemTop
+
+    if section == 'shirt':
+        for button in app.shirtButtons:
+            button.top = app.itemTop
+    else:
+        for button in app.pantButtons:
+            button.top = app.itemTop
+
+
 #     num = app.shirtNum
 
 #     for item in ['shirt']:
@@ -459,7 +500,6 @@ def createButtons(app):
 def setDefaultLook(app):
     defaultTop = Shirt('purple-default', 's-sleeve', 'shirt_color.png')
     Shirt.idS -= 1
-    print('creating default', Shirt.idS)
     Shirt.all.remove(defaultTop)
     Shirt.clean.remove(defaultTop)
     defaultBottom = Pant('blue-default', 'jeans', 'pants_color.png')
@@ -487,18 +527,28 @@ def onMousePress(app, mousex, mousey):
     elif idButton.name == 'scroll-up':
         adjustScrollbar(app, buttonPress='up')
 
-    elif idButton.name == 'take-picture':
+    elif idButton.name == 'take-picture-s':
         takePicture(app)
         if app.capturedImage != None:
             imagePath = overlayImage('assets/templates/shirt_mask.png', 'captured_image.jpg', f'assets/shirts/{Shirt.idS}.png')
-            print(imagePath)
             color = getShirtColor(imagePath)
             imagePath = imagePath[13:]
             sleeve = None
 
             app.currCreation = Shirt(color, sleeve, imagePath, Shirt.idS-1)
-            print('should increase here', Shirt.idS)
-            print(app.currCreation.idS)
+
+            app.confirmationScreen = True
+    
+    elif idButton.name == 'take-picture-p':
+        takePicture(app)
+        if app.capturedImage != None:
+            imagePath = overlayImage('assets/templates/pant_mask.png', 'captured_image.jpg', f'assets/pants/{Pant.idP}.png')
+            print(imagePath)
+            color = getShirtColor(imagePath)
+            imagePath = imagePath[13:]
+            material = None
+
+            app.currCreation = Pant(color, material, imagePath, Pant.idP-1)
 
             app.confirmationScreen = True
     
@@ -531,13 +581,27 @@ def onMousePress(app, mousex, mousey):
         Button.getButtonByName('closet-pant').color = COLORS['coral']
         Button.getButtonByName('closet-shirt').color = COLORS['coral']
 
+    elif 'btn' in idButton.name:
+        if 'shirt' in idButton.name:
+            shirtId = int(idButton.name[5:-4])
+            print(shirtId)
+            app.avatarOutfit['shirt'] = Shirt.getById(shirtId)
+            print(app.avatarOutfit['shirt'])
+        else:
+            pantId = int(idButton.name[4:-4])
+            app.avatarOutfit['pant'] = Pant.getById(pantId)
+
 
 
     elif idButton.name == 'confirm':
-        with open('s_inventory.txt','a') as file:
+        if type(app.currCreation) == Shirt:
+            path = 's_inventory.txt'
+        else: 
+            path = 'p_inventory.txt'
+        with open(path ,'a') as file:
             if type(app.currCreation) == Shirt:
                 line = f'\n{app.currCreation.idS},{app.currCreation.color},{app.currCreation.sleeve}'
-            else: line = f'\n{app.currCreation.idS},{app.currCreation.color},{app.currCreation.material}'
+            else: line = f'\n{app.currCreation.idP},{app.currCreation.color},{app.currCreation.material}'
             file.write(line)
         app.confirmationScreen  = False
         createButtons(app) 
@@ -549,6 +613,8 @@ def onMousePress(app, mousex, mousey):
     
     if inHoverRegion(mousex, mousey, app.sRegion):
         recommendOutfit(app, shirt='shirt')
+    elif inHoverRegion(mousex, mousey, app.pRegion):
+        recommendOutfit(app, pants='pant')
 
 
 def onMouseDrag(app, mousex, mousey):
@@ -564,7 +630,7 @@ def onMouseMove(app, mousex, mousey):
     pRegion = (50, 100, 50, 50)
     if inHoverRegion(mousex, mousey, app.sRegion):
         app.showSLabel = True
-    elif inHoverRegion(mousex, mousey, pRegion):
+    elif inHoverRegion(mousex, mousey, app.pRegion):
         app.showPLabel = True
     else:
         app.showSLabel = False
@@ -601,7 +667,11 @@ def adjustScrollbar(app, mousey=None, buttonPress=None):
     else:
         app.scrollTop = currTop
 
-    #updateClosetButtons(app)
+    if app.closetDisplay == 'shirts':
+        updateClosetButtons(app, 'shirt')
+        print('printing', app.shirtButtons[0])
+    else:
+        updateClosetButtons(app, 'pant')
 
 def takeStep(app):
     if app.imageI < 10:
@@ -628,7 +698,7 @@ def drawScreen(app):
         (10, 65, app.width-20, 147-65, COLORS['dark_coral']),
         (10, 65, 792-10, app.height-75, COLORS['dark_coral']),
         (10, app.height-150, app.width-20, 150-10, COLORS['dark_coral']),
-        (989, 65, app.width-10-989, app.height-75, COLORS['dark_coral']),
+        (989, 65, app.width-10-989, app.height-75, COLORS['dark_coral'])
     ]
 
     #background
@@ -660,11 +730,16 @@ def drawScreen(app):
     drawLabel('X', app.width-84+10, 13+10, size=30, align='left-top', fill='white', font='Pixelify Sans')
 
     #center panel
-    drawRect(283, 92, 481, 533, fill=COLORS['pink'])
-    drawImage('assets/center_background.png', 283, 92, width=481, height=533, align='left-top')
+    drawRect(283, 92, 481, 533, fill=COLORS['shadow'])
+    drawRect(283+3, 92+3, 48-3, 533-3, fill=COLORS['pink'])
+    drawImage('assets/center_background.png', 283+3, 92+3, width=481-3, height=533-3, align='left-top')
     drawLabel(app.centerMessage, (481+283+283)//2, 161,fill=COLORS['strawberry'], size=20, font='Pixelify Sans')
     drawRect((283+283+481)//2-60, 541, 120, 36, fill=COLORS['shadow'])
-    partPaths = ['templates/hair_color.png', f'pants/{app.avatarOutfit['pant'].path}.png', f'shirts/{app.avatarOutfit['shirt'].path}.png','templates/skin_color.png', 'templates/eye0_b.png', 'templates/avatar_outline_t.png']
+
+    drawImage('assets/templates/hair_color.png', app.width/2, app.height/2-40, width=340, height=340, align='center')
+    drawImage(f'assets/pants/{app.avatarOutfit['pant'].path}.png', app.width/2, (app.height/2)+23, width=340, height=210, align='center')
+    drawImage(f'assets/shirts/{app.avatarOutfit['shirt'].path}.png', app.width/2, app.height/2-36, width=340, height=210, align='center')
+    partPaths = ['templates/skin_color.png', 'templates/eye0_b.png', 'templates/avatar_outline_t.png']
     for partPath in partPaths:
         drawImage(f'assets/{partPath}', app.width/2, app.height/2-40, width=340, height=340, align='center')
     
@@ -676,10 +751,12 @@ def drawScreen(app):
     
     drawImage('assets/weather/sun.png', (42+42+213)//2, 250, width=100, height=100, align='center')
     drawImage('assets/weather/rain.png', (42+42+213)//2-80, 450, width=50, height=50)
+    drawLabel(app.rain, (42+42+213)//2-80+100, 450+15, size=20, fill=COLORS['shadow'], font='Pixelify Sans')
     drawImage('assets/weather/wind.png', (42+42+213)//2-80, 500, width=50, height=50)
+    drawLabel(app.wind, (42+42+213)//2-80+100, 500+15, size=20, fill=COLORS['shadow'], font='Pixelify Sans')
 
     drawLabel('Current Temp:', (42+42+213)//2, 95+270, fill=COLORS['shadow'], size=20, font='Pixelify Sans')
-    drawLabel('20', (42+42+213)//2, 95+270+50, fill=COLORS['shadow'], size=50, font='Pixelify Sans')
+    drawLabel(app.temp, (42+42+213)//2, 95+270+50, fill=COLORS['shadow'], size=50, font='Pixelify Sans')
 
     #scroll bar
     drawRect(app.width-41-21, 150, 21, 475, fill='white')
@@ -713,13 +790,11 @@ def drawScreen(app):
     drawLabel('▲', app.width-42-20+5, 150+5, align='left-top', fill=COLORS['shadow'])
     drawLabel('▲', app.width-42-20+5, app.height-20-150+5, rotateAngle=180, align='left-top', fill=COLORS['shadow'])
 
-    drawRect(482,360-37, 84, 55, fill=None)
-
     if app.animateMode:
         drawImage(f'assets/heart_animation/frame_{app.imageI}.png', 283, 92, width=481, height=533)
     if app.introScreen:
         drawIntroScreen(app)
-            
+
 
 
 def drawIntroScreen(app):
@@ -761,18 +836,27 @@ def drawConfirmationScreen(app):
     drawLabel('Cancel', (app.width/2-40-105+app.width/2-40-105+105)//2, (500+500+45)//2, fill=COLORS['shadow'], size=25, font='Pixelify Sans')
 
     drawRect(app.width-240-160, 253, 160, 210, fill=COLORS['gum'])
-    path = f'assets/shirts/{app.currCreation.path}'
-    widthi, heighti = getImageSize(path)
-    drawImage(path, (((app.width-240-160+(app.width-240-160)+160)//2)), (253+253+210)//2, width = widthi//7, height=heighti//7, align='center')
+    if type(app.currCreation) == Shirt:
+        ipath = f'assets/shirts/{app.currCreation.path}'
+        typeLabel = 'Sleeve:'
+        creationType = app.currCreation.sleeve
+    else:
+        ipath = f'assets/pants/{app.currCreation.path}'
+        typeLabel = 'Material:'
+        creationType = app.currCreation.material
+    widthi, heighti = getImageSize(ipath)
+    drawImage(ipath, (((app.width-240-160+(app.width-240-160)+160)//2)), (253+253+210)//2, width = widthi//7, height=heighti//7, align='center')
 
     drawLabel('Is this right?', 300, 253, align='left-top', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
     drawLabel(f'Color:', 300, 253+20+45+15, align='left-top', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
     drawLabel(f'{app.currCreation.color}', (395+395+109)//2, 253+20+45+22, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
-    drawLabel(f'Sleeve:', 300, 253+50+20+20+45+15, align='left-top', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
-    if app.currCreation.sleeve == None:
+    
+
+    drawLabel(f'{typeLabel}', 300, 253+50+20+20+45+15, align='left-top', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
+    if creationType == None:
         drawLabel('select    v', (395+395+109)//2, (320+70+320+70+45)//2, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
     else:
-        drawLabel(f'{app.currCreation.sleeve}', (395+395+109)//2, (320+70+320+70+45)//2, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
+        drawLabel(f'{creationType}', (395+395+109)//2, (320+70+320+70+45)//2, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
     
 
 
@@ -783,12 +867,14 @@ def drawConfirmationScreen(app):
     # drawLabel(label, 220, 270)
 
 def drawCloset(app):
-    for button in app.closetButtons:
-        drawRect(button.left, button.top, button.width, button.height, fill=button.color)
 
     if app.closetDisplay == 'shirts':
+        for button in app.shirtButtons:
+            drawRect(button.left, button.top, button.width, button.height, fill=button.color)
         num = app.shirtNum
     elif app.closetDisplay == 'pants':
+        for button in app.pantButtons:
+            drawRect(button.left, button.top, button.width, button.height, fill=button.color)
         num = app.pantNum
         path = 'assets/pants/'
     else:
@@ -833,17 +919,23 @@ def drawInfoLabels(app):
         drawItems = True
         label1= f'color: {app.avatarOutfit['shirt'].color}'
         label2 = f'sleeve: {app.avatarOutfit['shirt'].sleeve}'
+        lineCoords = (323+114, 220+53, app.width/2, app.height/2-20)
+        rectCoords = (323, 220, 114, 53)
+        labelCoords = ((323+323+114)//2, 240)
 
     elif app.showPLabel == True:
         drawItems = True
         label1 = f'color: {app.avatarOutfit['pant'].color}'
         label2 = (f'material: {app.avatarOutfit['pant'].material}')
+        lineCoords = (323+114, 220+53+53, app.width/2, 360+15+20)
+        rectCoords = (323, 220+53, 114, 53)
+        labelCoords = ((323+323+114)//2, 240+53)
         
     if drawItems == True: 
-        drawRect(323, 220, 114, 53, fill=COLORS['pink'], border=COLORS['dark_coral'])
-        drawLine(323+114, 220+53, app.width/2, app.height/2-20, fill=COLORS['dark_coral'])
-        drawLabel(label1, (323+323+114)//2, 240, fill=COLORS['shadow'], font='Pixelify Sans')
-        drawLabel(label2, (323+323+114)//2, 270, fill=COLORS['shadow'], font='Pixelify Sans')
+        drawRect(rectCoords[0], rectCoords[1], rectCoords[2], rectCoords[3], fill=COLORS['pink'], border=COLORS['dark_coral'])
+        drawLine(lineCoords[0], lineCoords[1], lineCoords[2], lineCoords[3], fill=COLORS['dark_coral'])
+        drawLabel(label1, labelCoords[0], labelCoords[1], fill=COLORS['shadow'], font='Pixelify Sans')
+        drawLabel(label2, labelCoords[0], labelCoords[1]+30, fill=COLORS['shadow'], font='Pixelify Sans')
 
 
 #--------------- CMU GRAPHICS FUNCTIONS ---------------------
@@ -880,7 +972,7 @@ def onAppStart(app):
     app.trackingScroll = False
     app.initialY = None
 
-    #app.temp = getTemp('Pittsburgh')
+    app.temp, app.rain, app.wind = getWeather('Pittsburgh')
 
     app.writingToTerminal = True
     app.terminalMessage = ''
@@ -898,6 +990,7 @@ def onAppStart(app):
     setDefaultLook(app)
     
     app.sRegion = (482,360-37, 84, 55)
+    app.pRegion = (484+6, 360+15, 75, 58)
 
     app.shirtNum = getNum(app, 's_inventory.txt')
     app.pantNum = getNum(app, 'p_inventory.txt')
@@ -916,7 +1009,8 @@ def onAppStart(app):
     app.mainButtons = []
     app.confButtons = []
     app.introButtons = []
-    app.closetButtons = []
+    app.shirtButtons = []
+    app.pantButtons = []
     createButtons(app)
 
 

@@ -12,33 +12,16 @@ from bs4 import BeautifulSoup
 
 
 def getWeather(city):
-    list = []
-    file = requests.get("https://weather.com/en-IN/weather/tenday/l/336ebf959ee8b55242536b9ce9a72f50cf94736edffbc2bf85a8ea3c6c983639")
-    soup = BeautifulSoup(file.content, 'html.parser')
-    
-    all = soup.find("div", {"class":"locations-title ten-day-page-title"}).find("h1").text
-    
-    content = soup.find_all("table", {"class":"twc-table"})
-    for items in content:
-        for i in range(len(items.find_all("tr"))-1):
-            dict = {}
-            try: 
-                dict["day"]= items.find_all("span", {"class":"date-time"})[i].text
-                dict["date"]= items.find_all("span", {"class":"day-detail"})[i].text		 
-                dict["desc"]= items.find_all("td", {"class":"description"})[i].text
-                dict["temp"]= items.find_all("td", {"class":"temp"})[i].text
-                dict["precip"]= items.find_all("td", {"class":"precip"})[i].text
-                dict["wind"]= items.find_all("td", {"class":"wind"})[i].text
-                dict["humidity"]= items.find_all("td", {"class":"humidity"})[i].text
-            except: 
-                dict["day"]="None"
-                dict["date"]="None"
-                dict["desc"]="None"
-                dict["temp"]="None"
-                dict["precip"]="None"
-                dict["wind"]="None"
-                dict["humidity"]="None"
-            
-            list.append(dict)
+    file = requests.get(f'https://www.google.com/search?q=weather+{city}', headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15' })
+
+    soup = BeautifulSoup(file.text, 'html.parser')
+
+    temp = soup.find('span', id='wob_tm').text
+    rain = soup.find('span', id='wob_pp').text
+    wind = soup.find('span', id='wob_ws').text
+
+    return temp, rain, wind
+
+
     
 print(getWeather('pittsburgh'))
