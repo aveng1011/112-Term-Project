@@ -1,9 +1,2 @@
-0,blue,s-sleeve
-1,red,s-sleeve
-2,yellow,s-sleeve
-3,green,s-sleeve
-4,orange,s-sleeve
-5,black,s-sleeve
-6,gray,s-sleeve
-7,gray,s-sleeve
-8,brown,None
+0,black,s-sleeve
+1,brown,s-sleeve

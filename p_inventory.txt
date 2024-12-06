@@ -1,4 +1,2 @@
-0,black,jeans
-1,grey,cotton
-2,blue,cotton
-3,dark-beige,None
+0,dark-beige,cotton
+1,dark-beige,None

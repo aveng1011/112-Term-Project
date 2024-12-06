@@ -20,7 +20,9 @@ def crop(maskPath, referencePath):
 
     print('mask', maskw, maskh)
     print('captured image', inputW, inputH)
-    maskResult.save(maskPath)
+    maskResult.save('assets/templates/cropped_shirt_mask.png')
+
+crop('assets/templates/shirt_mask.png', 'captured_image.jpg')
 
 
 def create_mask(image_path):
@@ -51,7 +53,7 @@ def changeSkinTone(image_path, currSkinTone, newColor):
     #image.show()
     image.save("assets/pants/2.png")
 
-changeSkinTone('assets/templates/pants_color.png', (192,136,230, 255), (255, 0, 255, 255))
+# changeSkinTone('assets/templates/pants_color.png', (192,136,230, 255), (255, 0, 255, 255))
 
 def overlayImage(maskPath, imagePath, outputPath):
     mask = Image.open(maskPath)
@@ -71,7 +73,7 @@ def overlayImage(maskPath, imagePath, outputPath):
     image.save(outputPath)
     return outputPath
 
-overlayImage('assets/templates/shirt_mask.png', 'captured_image.jpg', 'result2.png')
+# overlayImage('assets/templates/shirt_mask.png', 'captured_image.jpg', 'result2.png')
 
 def pixelateShirt(imagePath):
     combined = Image.open(imagePath)
