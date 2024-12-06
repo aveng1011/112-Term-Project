@@ -1,2 +1,4 @@
 0,black,s-sleeve
 1,brown,s-sleeve
+2,dark_green,l-sleeve
+3,beige,s-sleeve

@@ -58,9 +58,9 @@ def distance(value1, value2):
     return( (((w2-w1)**2) + (x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)**0.5 )
 
 def generateCentroid():
-    r = random.randrange(0, 255)
+    r = random.randrange(0,255)
     g = random.randrange(0,255)
-    b = random.randrange(0, 255)
+    b = random.randrange(0,255)
     return (r,g,b, 255)
 
 def kmeans(image_path, centroids=None, prevCentroids=None):
@@ -140,9 +140,9 @@ def kmeans(image_path, centroids=None, prevCentroids=None):
             
 def getShirtColor(image_path):
     color = kmeans(image_path)
-    
+    print(color)
 
-    rgbNames = {'brown':(135,67,45, 255), 'black': (0,0,0,255), 'blue': (0, 0, 255, 255), 'red': (255, 0, 0, 255), 'gray': (80, 80, 80, 255), 'white': (255, 255, 255, 255), 'orange': (255, 165, 0, 255), 'yellow': (255, 255, 0, 255), 'green': (0, 255, 0, 255), 'blue': (0, 0, 255, 255), 'purple': (238, 130, 238, 255), 'beige': (232, 220, 202, 255), 'dark-beige':(215,194,168,255)}
+    rgbNames = {'light-blue':(158, 175, 179, 255), 'dark pink': (170, 51, 106, 255), 'maroon': (128,0,0, 255), 'dark green': (178, 172, 136, 255), 'brown':(135,67,45, 255), 'black': (0,0,0,255), 'blue': (0, 0, 255, 255), 'red': (255, 0, 0, 255), 'gray': (80, 80, 80, 255), 'white': (255, 255, 255, 255), 'orange': (255, 165, 0, 255), 'yellow': (255, 255, 0, 255), 'green': (0, 255, 0, 255), 'blue': (0, 0, 255, 255), 'purple': (238, 130, 238, 255), 'beige': (232, 220, 202, 255), 'dark-beige':(215,194,168,255)}
 
     smallestDistance = None
     currColor = None
@@ -157,9 +157,18 @@ def getWeather(city):
 
     soup = BeautifulSoup(file.text, 'html.parser')
 
-    temp = soup.find('span', id='wob_tm').text
-    rain = soup.find('span', id='wob_pp').text
-    wind = soup.find('span', id='wob_ws').text
+    try:
+        temp = soup.find('span', id='wob_tm').text
+    except:
+        temp = '20'
+    try:
+        rain = soup.find('span', id='wob_pp').text
+    except:
+        rain = '10%'
+    try:
+        wind = soup.find('span', id='wob_ws').text
+    except:
+        wind = '5 mph'
 
     return temp, rain, wind
 
@@ -204,12 +213,13 @@ def recommendOutfit(app, shirt = None, pants = None):
         while app.avatarOutfit['shirt'] == item and (item in Shirt.worn):
             item = recommendClothing('shirt')
 
-
+        print('recommended', item)
         app.avatarOutfit['shirt'] = item
     if pants != None:
         item = recommendClothing('pant')
         while app.avatarOutfit['pant'] == item and (item in Pant.worn):
             item = recommendClothing('pant')
+        print('recommended', item)
         app.avatarOutfit['pant'] = item
 
 def recommendClothing(type):
@@ -468,7 +478,7 @@ def createButtons(app):
     app.confButtons = [Button(*params) for params in confButtons]
 
     introButtons = [
-        ('set-name', app.width/2-52, 500, 120, 45, COLORS['dark_coral'])
+        ('set-name', app.width/2-75, 500, 150, 45, COLORS['dark_coral'])
     ]
     app.introButtons = [Button(*params) for params in introButtons]
 
@@ -534,7 +544,10 @@ def removeOldLogEntries(app):
         else: 
             shirt = Shirt.getById(int(sIndex))
             Shirt.worn.append(shirt)
-            Shirt.clean.remove(shirt)
+            try:
+                Shirt.clean.remove(shirt)
+            except:
+                pass
             pant = Pant.getById(int(pIndex))
             Pant.worn.append(pant)
             try:
@@ -997,7 +1010,7 @@ def onAppStart(app):
 
     app.animateMode = False
     app.confirmationScreen = False
-    app.introScreen = False 
+    app.introScreen = True 
     app.counter = 0
 
     app.imageI = 0
