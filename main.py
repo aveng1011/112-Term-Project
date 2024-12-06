@@ -50,7 +50,6 @@ def getImageSize(path):
     width, height = image.size
     return (width, height)
 
-
 def distance(value1, value2):
     w1, x1, y1, z1 = value1
     w2, x2, y2, z2 = value2
@@ -140,7 +139,6 @@ def kmeans(image_path, centroids=None, prevCentroids=None):
             
 def getShirtColor(image_path):
     color = kmeans(image_path)
-    print(color)
 
     rgbNames = {'light-blue':(158, 175, 179, 255), 'dark pink': (170, 51, 106, 255), 'maroon': (128,0,0, 255), 'dark green': (178, 172, 136, 255), 'brown':(135,67,45, 255), 'black': (0,0,0,255), 'blue': (0, 0, 255, 255), 'red': (255, 0, 0, 255), 'gray': (80, 80, 80, 255), 'white': (255, 255, 255, 255), 'orange': (255, 165, 0, 255), 'yellow': (255, 255, 0, 255), 'green': (0, 255, 0, 255), 'blue': (0, 0, 255, 255), 'purple': (238, 130, 238, 255), 'beige': (232, 220, 202, 255), 'dark-beige':(215,194,168,255)}
 
@@ -152,6 +150,7 @@ def getShirtColor(image_path):
             smallestDistance = distance(color,rgbNames[rgbColor])
     
     return currColor
+
 def getWeather(city):
     file = requests.get(f'https://www.google.com/search?q=weather+{city}', headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15' })
 
@@ -212,14 +211,11 @@ def recommendOutfit(app, shirt = None, pants = None):
         item = recommendClothing('shirt')
         while app.avatarOutfit['shirt'] == item and (item in Shirt.worn):
             item = recommendClothing('shirt')
-
-        print('recommended', item)
         app.avatarOutfit['shirt'] = item
     if pants != None:
         item = recommendClothing('pant')
         while app.avatarOutfit['pant'] == item and (item in Pant.worn):
             item = recommendClothing('pant')
-        print('recommended', item)
         app.avatarOutfit['pant'] = item
 
 def recommendClothing(type):
@@ -250,6 +246,7 @@ def getLastLine(path):
     with open(path,'r') as file:
         list = file.readlines()
         lLine = list[-1]
+        print('last line', lLine)
     features = lLine.split(',')
     return int(features[0]), features[1], features[2]
 
@@ -318,9 +315,6 @@ def removeBackground(image, bgColor, threshold):
     path = f'assets/shirts/{Shirt.idS}.png'
     return path
     
-def getSleeve(attribute):
-    return 's-sleeve'
-
 def inHoverRegion(mousex, mousey, region):
     if (mousex >= region[0]) and (mousex <= region[0]+region[2]) and (mousey >= region[1]) and (mousey <= region[1]+region[3]):
             return True
@@ -356,6 +350,8 @@ class Shirt:
     worn = []
     
     def __init__(self, color, type, path, id=None):
+        Shirt.idS, __, __ = getLastLine('s_inventory.txt')
+        Shirt.idS += 1
         self.color = color
         self.sleeve = type
         self.path = path
@@ -366,10 +362,11 @@ class Shirt:
             self.id = id
         Shirt.clean.append(self)
         Shirt.all.append(self)
+        print('created', self)
         
     
     def __repr__(self):
-        return f'color: {self.color}, type: {self.sleeve}'
+        return f'color: {self.color}, type: {self.sleeve}, id: {self.id}'
 
     
     def getById(id):
@@ -483,8 +480,6 @@ def createButtons(app):
     app.introButtons = [Button(*params) for params in introButtons]
 
 def updateClosetButtons(app, section):
-    itemTop = app.itemTop
-
     if section == 'shirt':
         for button in app.shirtButtons:
             button.top = app.itemTop
@@ -494,17 +489,15 @@ def updateClosetButtons(app, section):
 
 def setDefaultLook(app):
     defaultTop = Shirt('black', 's-sleeve','0.png', 0)
-    # Shirt.idS -= 1
     Shirt.all.remove(defaultTop)
-    # Shirt.clean.remove(defaultTop)
+    print(Shirt.all)
     defaultBottom = Pant('dark-beige', 'cotton', '0.png', 0)
     Pant.all.remove(defaultBottom)
-    # Pant.clean.remove(defaultBottom)
     app.avatarOutfit['shirt'] = defaultTop
     app.avatarOutfit['pant'] = defaultBottom
 
 def getNum(app, filePath):
-    id, color, sleeve = getLastLine(filePath)
+    id, _, _ = getLastLine(filePath)
     return id +1
 
 def removeOldLogEntries(app):
@@ -513,52 +506,54 @@ def removeOldLogEntries(app):
     with open('week_log.txt', 'r') as file:
         allLines = file.readlines()
     
-    for line in allLines:
-        lDate = line.split(',')[0] 
-        sIndex = int(line.split(',')[1])
-        pIndex = int(line.split(',')[2])
+    try:
+        for line in allLines:
+            lDate = line.split(',')[0] 
+            sIndex = int(line.split(',')[1])
+            pIndex = int(line.split(',')[2])
+            
+            format = "%Y-%m-%d"
+            date1 = datetime.strptime(currDate, format)
+            date2 = datetime.strptime(lDate, format)
+
+            difference = str(date1-date2)
+            list = difference.split(' days')
+            difference = list[0]
+
+            if ':' in difference:
+                difference  = 0
         
-        format = "%Y-%m-%d"
-        date1 = datetime.strptime(currDate, format)
-        date2 = datetime.strptime(lDate, format)
+            if int(difference) > 7:
+                shirt = Shirt.getById(int(sIndex))
+                Shirt.worn.remove(shirt)
+                Shirt.clean.append(shirt)
+                pant = Pant.getById(int(pIndex))
+                Pant.clean.append(pant)
+                try:
+                    Pant.worn.remove(pant)
+                except:
+                    pass
 
-        difference = str(date1-date2)
-        list = difference.split(' days')
-        difference = list[0]
-
-        if ':' in difference:
-            difference  = 0
-    
-        if int(difference) > 7:
-            shirt = Shirt.getById(int(sIndex))
-            Shirt.worn.remove(shirt)
-            Shirt.clean.append(shirt)
-            pant = Pant.getById(int(pIndex))
-            Pant.clean.append(pant)
-            try:
-                Pant.worn.remove(pant)
-            except:
-                pass
-
-            allLines.remove(line)
-        else: 
-            shirt = Shirt.getById(int(sIndex))
-            Shirt.worn.append(shirt)
-            try:
-                Shirt.clean.remove(shirt)
-            except:
-                pass
-            pant = Pant.getById(int(pIndex))
-            Pant.worn.append(pant)
-            try:
-                Pant.clean.remove(pant)
-            except:
-                pass
-        
-        with open('week_log.txt', 'w') as file:
-            for line in allLines:
-                file.write(line)
-
+                allLines.remove(line)
+            else: 
+                shirt = Shirt.getById(int(sIndex))
+                Shirt.worn.append(shirt)
+                try:
+                    Shirt.clean.remove(shirt)
+                except:
+                    pass
+                pant = Pant.getById(int(pIndex))
+                Pant.worn.append(pant)
+                try:
+                    Pant.clean.remove(pant)
+                except:
+                    pass
+            
+            with open('week_log.txt', 'w') as file:
+                for line in allLines:
+                    file.write(line)
+    except:
+        pass
 #--------------- CONTROLLER FUNCTIONS --------------------
 
 def onMousePress(app, mousex, mousey):
@@ -609,11 +604,12 @@ def onMousePress(app, mousex, mousey):
         addToLog(shirt, pant)
         app.animateMode = True
         app.centerMessage = 'Looking ready to seize the day!'
-        #!!! remove change clothes buttons
 
     elif idButton.name == 'closet-shirt':
         idButton.color = COLORS['pink']
         app.closetDisplay = 'shirts'
+        app.itemTop = 157 - (8+84)
+        app.scrollTop = 171
         Button.getButtonByName('closet-pant').color = COLORS['coral']
         Button.getButtonByName('customize-avatar').color = COLORS['coral']
 
@@ -621,6 +617,8 @@ def onMousePress(app, mousex, mousey):
     elif idButton.name == 'closet-pant':
         idButton.color = COLORS['pink']
         app.closetDisplay = 'pants'
+        app.itemTop = 157 - (8+84)
+        app.scrollTop = 171
         Button.getButtonByName('closet-shirt').color = COLORS['coral']
         Button.getButtonByName('customize-avatar').color = COLORS['coral']
 
@@ -684,7 +682,7 @@ def onMouseDrag(app, mousex, mousey):
     if app.trackingScroll:
         adjustScrollbar(app, mousey=mousey)
 
-def onMouseRelease(app, mousex, mousey):
+def onMouseRelease(app, mousey):
     if app.trackingScroll:
         app.trackingScroll = False
         adjustScrollbar(app, mousey=mousey) 
@@ -1046,6 +1044,7 @@ def onAppStart(app):
     app.shirtNum = getNum(app, 's_inventory.txt')
     app.pantNum = getNum(app, 'p_inventory.txt')
     loadInventory(app)
+    print(Shirt.all)
     app.satisfiesEntries = False
     if app.shirtNum > 3:
         app.satisfiesEntries = True
