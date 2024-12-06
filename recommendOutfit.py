@@ -22,7 +22,7 @@ def crop(maskPath, referencePath):
     print('captured image', inputW, inputH)
     maskResult.save('assets/templates/cropped_shirt_mask.png')
 
-crop('assets/templates/shirt_mask.png', 'captured_image.jpg')
+crop('assets/templates/shirt_.png', 'captured_image.jpg')
 
 
 def create_mask(image_path):

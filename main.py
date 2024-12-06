@@ -394,7 +394,7 @@ class Pant:
         Pant.all.append(self)
 
     def __repr__(self):
-        return f'color: {self.color}, material: {self.material}'
+        return f'color: {self.color}, material: {self.material}, id: {self.id}'
     
     def removePantByColor(color):
         for pant in Pant.all:
@@ -404,9 +404,8 @@ class Pant:
     
     def getById(id):
         for pant in Pant.all:
-            if pant.id == id:
-                if int(pant.id) == int(id):
-                    return pant
+            if int(pant.id) == int(id):
+                return pant
 
 
 #--------------- MODEL FUNCTIONS --------------------
@@ -489,7 +488,7 @@ def setDefaultLook(app):
     Shirt.all.remove(defaultTop)
     # Shirt.clean.remove(defaultTop)
     defaultBottom = Pant('dark-beige', 'cotton', '0.png', 0)
-    #Pant.all.remove(defaultBottom)
+    Pant.all.remove(defaultBottom)
     # Pant.clean.remove(defaultBottom)
     app.avatarOutfit['shirt'] = defaultTop
     app.avatarOutfit['pant'] = defaultBottom
@@ -625,6 +624,7 @@ def onMousePress(app, mousex, mousey):
             app.avatarOutfit['shirt'] = Shirt.getById(shirtId)
         else:
             pantId = int(idButton.name[4:-4])
+            print(Pant.all)
             app.avatarOutfit['pant'] = Pant.getById(pantId)
 
 
@@ -641,6 +641,7 @@ def onMousePress(app, mousex, mousey):
             file.write(line)
         app.confirmationScreen  = False
         app.shirtNum = getNum(app, 's_inventory.txt')
+        app.pantNum = getNum(app, 'p_inventory.txt')
         createButtons(app)
         loadInventory(app)
 
