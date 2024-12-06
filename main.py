@@ -624,7 +624,6 @@ def onMousePress(app, mousex, mousey):
             app.avatarOutfit['shirt'] = Shirt.getById(shirtId)
         else:
             pantId = int(idButton.name[4:-4])
-            print(Pant.all)
             app.avatarOutfit['pant'] = Pant.getById(pantId)
 
 
@@ -649,10 +648,15 @@ def onMousePress(app, mousex, mousey):
     elif idButton.name == 'cancel':
         app.confirmationScreen = False
     elif idButton.name == 'change-sleeve':
-        if app.currCreation.sleeve == None or app.currCreation.sleeve =='s-sleeve':
-            app.currCreation.sleeve = 'l-sleeve'
-        else: 
-            app.currCreation.sleeve = 's-sleeve'
+        if type(app.currCreation) == Shirt:
+            if (app.currCreation.sleeve == None or app.currCreation.sleeve =='s-sleeve'):
+                app.currCreation.sleeve = 'l-sleeve'
+            elif type(app.currCreation == Shirt): 
+                app.currCreation.sleeve = 's-sleeve'
+        elif app.currCreation.material == None or app.currCreation.material == 'jeans':
+            app.currCreation.material = 'cotton'
+        else:
+            app.currCreation.material = 'jeans'
     
     elif idButton.name == 'set-name':
         app.introScreen = False
@@ -888,14 +892,14 @@ def drawConfirmationScreen(app):
 
     drawLabel('Is this right?', 300, 253, align='left-top', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
     drawLabel(f'Color:', 300, 253+20+45+15, align='left-top', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
-    drawLabel(f'{app.currCreation.color}', (395+395+109)//2, 253+20+45+22, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
+    drawLabel(f'{app.currCreation.color}', (395+395+180)//2, 253+20+45+22, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
     
 
-    drawLabel(f'{typeLabel}', 300, 253+50+20+20+45+15, align='left-top', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
+    drawLabel(f'{typeLabel}', 300, 253+50+20+20+45+15, align='left-top', fill=COLORS['shadow'], size=18, font='Pixelify Sans')
     if creationType == None:
         drawLabel('Select', (395+395+109)//2, (320+70+320+70+45)//2, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
     else:
-        drawLabel(f'{creationType}', (395+395+180)//2, (320+70+320+70+45)//2, align='center', fill=COLORS['shadow'], size=25, font='Pixelify Sans')
+        drawLabel(f'{creationType}', (395+395+180)//2, (320+70+320+70+45)//2, align='center', fill=COLORS['shadow'], size=23, font='Pixelify Sans')
     
 def drawCloset(app):
 
@@ -920,7 +924,6 @@ def drawCloset(app):
             drawRect(itemLeft+8+84, itemTop, 84, 84, fill=COLORS['strawberry'])
             drawRect(itemLeft+8+84, itemTop, 84-3, 84-3, fill=COLORS['white-pink'])
             drawRect(itemLeft+8+84+3, itemTop+3, 84-6, 84-6, fill=COLORS['coral'])
-            print(app.closetDisplay)
             if app.closetDisplay == 'shirts':
                 path = f'assets/shirts/{Shirt.all[i].path}'
                 app.shirtButtons[i].top = itemTop
